@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html>
+<title>Calendar Widget</title>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='author' content='Joseph Farrell'>
+    <meta name = 'viewport' content = 'width = device-width', initial-scale = 1.0'>
+    <meta http-equiv='X-UA-Compatible' content='IE=EmulateIE11'>
+<style>
+    /*Ordered alphabetically by ID, class, and HTML selectors*/
+    #calendar{
+        float: left;
+        margin-left: 15%;
+        box-shadow: 6px 6px 6px rgba(0, 0, 0, 0.25); 
+        font: 25px/1.5 'Helvetica Nue', Helvetica, Arial, san-serif;
+        display: table;
+    }
+    #calendar #cal_frame table.curr{
+        float: left;
+    }
+    #calendar #cal_frame table.temp{
+        position: absolute;
+    }
+    #calendar #cal_frame td.today{
+        background:#ededed;
+        color:#8c8c8c;
+        box-shadow:0px 0px 0px #ffffff inset;   <!--TODO-->
+    }
+    #calendar #cal_frame td:not(.null):hover {
+        cursor: pointer;
+        color:#ffffff;
+        text-shadow: #6C1A07 0px -1px;
+        /*background: linear-gradient(#b32b0c 0%, #cd310d 100%);*/
+        background: linear-gradient(to bottom, #2404a7 0%,#4b37a3 100%);
+    }
+    #calendar #cal_frame td span{
+        font-size: 80%;
+        position: relative;
+    }
+    #calendar #cal_frame td span:first-child{
+        bottom: 5px;
+    }
+    #calendar #cal_frame td span:last-child{
+        top: 5px;
+    }
+    #calendar .header{
+        /*background: linear-gradient(#b32b0c 0%, #cd310d 100%);*/
+        background: linear-gradient(to bottom, #2404a7 0%,#4b37a3 100%);
+        height: 40px;
+        position: relative;
+        color: #ffffff;
+        border-top-left-radius: 5px; 
+        border-top-right-radius: 5px; 
+        font-weight: bold;
+        font-size: 80%;
+        text-shadow: 0px -1px 0 #87260c;
+        text-transform: uppercase;
+    }
+    #calendar .header .button{
+        cursor: default;
+        width: 30px;
+        text-align: center;
+        position: absolute;
+    }
+    #calendar .header .button:hover{
+        /*background: linear-gradient(#d94215 0%, #bb330f 100%);*/
+        background-color: #2404a7;
+    }
+    #calendar .header .hook{
+        width: 9px;
+        height: 40px;
+        position: absolute;
+        bottom: 60%;
+        border-radius: 10px;
+        background: linear-gradient(45deg, #ffffff 0%, #827e7d 100%);
+        box-shadow: 0px -1px 2px rgba(0,0,0,0.65);
+    }
+    .right.hook{
+        right: 15%;
+    }
+    .left.hook{
+        left: 15%;
+    }
+    #calendar .header .left.button{
+        left: 0;
+        border-top-left-radius: 5px;
+        border-right: 1px solid #4b37a3;
+    }
+    #calendar .header .month-year{
+        letter-spacing: 1px;
+        width: 100%;
+        text-align: center;
+    }
+    #calendar .header .right.button {
+        right: 0;
+        top: 0;
+        border-left: 1px solid #4b37a3;
+        border-top-right-radius: 5px;
+    }
+    #calendar .header span{
+        display: inline-block;
+        line-height: 40px;
+    }
+    #calendar table{
+        background: #ffffff;
+        border-collapse: collapse;
+    }
+    #calendar td{
+        color: #2b2b2b;
+        width: 64px;
+        height: 45px;
+        line-height: 65px;
+        text-align: center;
+        border: 1px solid #e6e6e6;
+    }
+    #calendar #days td{
+        height: 53px;
+        line-height: 53px;
+        text-transform: uppercase;
+        font-size: 60%;
+        color: #9e9e9e;
+    }
+    #calendar #days td:not(:last-child){
+        border-right: 1px solid #ffffff;
+    }
+    body{
+        background-color: #f0f0f0;
+        color: #000000;
+        font-family: Trebuchet MS, Arial;
+        font-size: 13px;
+        padding-bottom: 20px;
+    }
+    html{
+        height: 100%;
+        overflow: scroll;
+    }
+</style>
+<script type='text/javascript' src='http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.7.1.min.js'></script>
+<script type='text/javascript' src='http://ajax.aspnetcdn.com/ajax/jquery.ui/1.8.17/jquery-ui.min.js'></script>
+<link rel='stylesheet' href='http://ajax.aspnetcdn.com/ajax/jquery.ui/1.8.17/themes/redmond/jquery-ui.css'>
+<script type='text/javascript'>  
+	var startDate, endDate, dateTemp;
+    /*
+    Generates and updates calendar
+    Months are cached as they are generated in order to reduce load times
+    */
+    var CALENDAR = function() {
+        var wrap, label, 
+            months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 
+'October', 'November', 'December'];    
+        
+        function init(newWrap) {
+                wrap = $(newWrap || '#calendar'); 
+                label = wrap.find('#label'); 
+                wrap.find('#prev').bind('click.calendar', function () { switchMonth(false); }); 
+                wrap.find('#next').bind('click.calendar', function () { switchMonth(true);  }); 
+                label.bind('click', function () { switchMonth(null, new Date().getMonth(), new Date().getFullYear()); });        
+                label.click();
+        }
+        
+        function switchMonth(next, month, year) {
+            var curr = label.text().trim().split(' '), 
+            calendar, 
+            tempYear =  parseInt(curr[1], 10); 
+            month = month || ((next) ? ( (curr[0] === 'December') ? 0 : months.indexOf(curr[0]) + 1 ) : 
+( (curr[0] === 'January') ? 11 : months.indexOf(curr[0]) - 1 )); 
+            year = year || ((next && month === 0) ? tempYear + 1 : (!next && month === 11) ? tempYear - 1 : tempYear);
+            
+            calendar =  createCal(year, month); 
+            $('#cal_frame', wrap) .find('.curr') 
+                .removeClass('curr') 
+                .addClass('temp') 
+                .end() 
+                .prepend(calendar.calendar()) 
+                .find('.temp') 
+                .fadeOut('slow', function () { $(this).remove(); }); 
+            $('#label').text(calendar.label);
+        }
+        
+        function createCal(year, month) {
+            var day = 1, i, j, haveDays = true,  
+            startDay = new Date(year, month, day).getDay(), 
+            daysInMonths = [31, (((year%4==0)&&(year%100!=0))||(year%400==0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31], 
+            calendar = [];
+            
+            <!--Check cache for request-->
+            if (createCal.cache[year]) { 
+                if (createCal.cache[year][month]) { 
+                    return createCal.cache[year][month]; 
+                } 
+            } 
+            else { 
+                createCal.cache[year] = {}; 
+            }
+            
+            i = 0; 
+            while(haveDays) { 
+                calendar[i] = []; 
+                for(j = 0; j < 7; j++) { 
+                    if (i === 0) { 
+                        if (j === startDay) { 
+                            calendar[i][j] = day++; 
+                            startDay++; 
+                        } 
+                    } 
+                    else if (day <= daysInMonths[month]) { 
+                        calendar[i][j] = day++; 
+                    } 
+                    else { 
+                        calendar[i][j] = ''; 
+                        haveDays = false; 
+                    } 
+                    if (day > daysInMonths[month]) { 
+                        haveDays = false; 
+                    } 
+                } 
+                i++; 
+            }
+            
+            if (calendar[5]) { 
+                for (i = 0; i < calendar[5].length; i++) { 
+                    if (calendar[5][i] !== '') { 
+                        calendar[4][i] = '<span>' + calendar[4][i] + '</span><span>' + calendar[5][i] + '</span>'; 
+                    } 
+                } 
+                calendar = calendar.slice(0, 5); 
+            }
+            
+			//Onclick for individual dates goes here
+            for (i = 0; i < calendar.length; i++) { 
+                calendar[i] = '<tr><td class=\'dateBox\' onclick=\'selectDate(this);\'>' + 
+calendar[i].join('</td><td class=\'dateBox\' onclick=\'selectDate(this);\'>') + '</td></tr>'; 
+            } 
+            calendar = $('<table>' + calendar.join('') + '</table>').addClass('curr'); 
+            
+            $('td:empty', calendar).addClass('null'); 
+            if (month === new Date().getMonth()) { 
+                $('td', calendar).filter(function () { return $(this).text() === 
+new Date().getDate().toString(); }).addClass('today'); 
+            } 
+            createCal.cache[year][month] = { calendar : function () { return calendar.clone() }, 
+label : months[month] + ' ' + year }; 
+            
+            return createCal.cache[year][month];
+        }
+        createCal.cache = {};
+        return {
+            init:init,
+            switchMonth:switchMonth,
+            createCal:createCal
+        };
+    };
+    
+    $(document).ready(function(){
+        var cal = CALENDAR();  
+        cal.init();
+    });
+	
+	function buildDate(month, day, year) {
+        var date, monthnum;
+        
+        switch(month) {
+            case 'January':
+                monthnum = '01';
+                break;
+            case 'February':
+                monthnum = '02';
+                break;
+            case 'March':
+                monthnum = '03';
+                break;
+            case 'April':
+                monthnum = '04';
+                break;
+            case 'May':
+                monthnum = '05';
+                break;
+            case 'June':
+                monthnum = '06';
+                break;
+            case 'July':
+                monthnum = '07';
+                break;
+            case 'August':
+                monthnum = '08';
+                break;
+            case 'September':
+                monthnum = '09';
+                break;
+            case 'October':
+                monthnum = '10';
+                break;
+            case 'November':
+                monthnum = '11';
+                break;
+            case 'December':
+                monthnum = '12';
+                break;
+        }
+        
+        if(parseInt(day) < 10) {
+            day = '0' + day
+        }
+        
+        date = monthnum + '/' + day + '/' + year
+        return date;
+    }
+	
+	function capitalize(string) {
+        return string.charAt(0).toUpperCase() + string.slice(1);
+    }
+	
+	function dateComp(date1, date2) {
+        return (new Date(date1).valueOf() < new Date(date2).valueOf()) ? true : false;
+    }
+	
+	function findElement(date) {
+        var element;
+        $('.dateBox').each(function(i) {
+            if(parseInt(this.innerText) == parseInt(date)) {
+                element = this;
+            }
+        });
+        
+        return element;
+    }
+	
+    function highlightSelection(element) {
+        var startday, endday, startmonth, endmonth, matchArr;
+        
+        if(endDate == '') {
+            $('.dateBox').each(function(x) {
+                this.style.background = '#ffffff';
+                this.style.color = '#000000';
+            });
+            element.style.background = 'linear-gradient(to bottom, #2404a7 0%,#4b37a3 100%)';
+            element.style.color = '#ffffff';
+        }
+        else {
+            dateTemp = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/;
+            matchArr = startDate.match(dateTemp);
+			startmonth = matchArr[1];
+            startday = matchArr[2];
+            matchArr = endDate.match(dateTemp);
+			endmonth = matchArr[1];
+            endday = matchArr[2];
+            
+			if(startmonth != endmonth) {
+				$('.dateBox').each(function(x) {
+					if(parseInt(this.innerText) <= parseInt(endday)) {
+						this.style.background = 'linear-gradient(to bottom, #2404a7 0%,#4b37a3 100%)';
+						this.style.color = '#ffffff';
+						this.style.textShadow = '#6C1A07 0px -1px';
+					}
+				});
+			}
+			else {
+				$('.dateBox').each(function(x) {
+					if(parseInt(this.innerText) >= parseInt(startday) && parseInt(this.innerText) <= parseInt(endday)) {
+						this.style.background = 'linear-gradient(to bottom, #2404a7 0%,#4b37a3 100%)';
+						this.style.color = '#ffffff';
+						this.style.textShadow = '#6C1A07 0px -1px';
+					}
+					else {
+						this.style.background = '#ffffff';
+						this.style.color = '#000000';
+					}
+				});
+			}
+        }
+    }
+	
+	function selectDate(element) {
+        var date, month, day, year, holder, element, dateTemp, matchArr, today = new Date();
+        
+        day = element.innerText;
+        holder = document.getElementById('label').innerText.split(' ');
+        month = holder[0].toLowerCase();
+        month = capitalize(month);
+        year = holder[1];
+        date = buildDate(month, day, year);
+        element = findElement(day);
+        
+        if(startDate == '' || (startDate != '' && endDate != '')) {
+            startDate = date;
+            endDate = '';
+        }
+        else if(startDate != '' && dateComp(date, startDate)) {
+            dateTemp = startDate;
+            startDate = date;
+            endDate = dateTemp;
+        }
+        else {
+            endDate = date;
+        }
+        
+        $('#startDate').val(startDate);
+        $('#endDate').val(endDate);
+        highlightSelection(element);
+    }
+</script>
+</head>
+<body>
+<br/><br/>
+<div id='calendar'>
+    <div class='header'>
+        <span class='left button' id='prev'>&lang;</span>
+        <span class='left hook'></span>
+        <span class='month-year' id='label'>June 20%0</span>
+        <span class='right hook'></span>
+        <span class='right button' id='next'>&rang;</span>
+    </div>
+    <table id='days'>
+        <td>sun</td>
+        <td>mon</td>
+        <td>tue</td>
+        <td>wed</td>
+        <td>thu</td>
+        <td>fri</td>
+        <td>sat</td>
+    </table>
+    <div id='cal_frame'>
+        <table class='curr'> 
+            <tbody> 
+                <tr><td></td><td></td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td></tr> 
+                <tr><td>6</td><td>7</td><td>8</td><td>9</td><td>10</td><td>11</td><td>12</td></tr> 
+                <tr><td>13</td><td>14</td><td>15</td><td>16</td><td>17</td><td>18</td><td>19</td></tr> 
+                <tr><td>20</td><td>21</td><td>22</td><td>23</td><td>24</td><td>25</td><td>26</td></tr> 
+                <tr><td>27</td><td>28</td><td>29</td><td>30</td><td></td><td></td><td></td></tr> 
+            </tbody> 
+        </table>
+    </div>
+</div>
+</body>
+</html>
